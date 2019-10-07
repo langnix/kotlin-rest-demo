@@ -1,8 +1,7 @@
 package de.harm.kotlin.restdemo
 
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.BeforeAll
-
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -18,18 +17,28 @@ import java.util.*
 class ListOfPwResetParam : ParameterizedTypeReference<List<PwResetLink>>()
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-internal class UserControllerIT(@Autowired val restTemplate: TestRestTemplate) {
+internal class UserControllerIT(@Autowired val restTemplate: TestRestTemplate, @Autowired val lruRepo: RegisterLinkLinkRepo) {
     val keycloakId = UUID.randomUUID()
-    @BeforeAll
+    @BeforeEach
     internal fun setUp() {
-        println("Setup")
+        lruRepo.add(RegisterLinkEntity(keycloakId, "junit-run"))
     }
+
 
     @Test
     fun `register returns same userId`() {
         val res = restTemplate.getForEntity<RegisterLink>("/api/users/${keycloakId}/register")
         assertThat(res.statusCode).isEqualTo(HttpStatus.OK)
         assertThat(res.body?.keycloakId).isEqualTo(keycloakId)
+    }
+
+    @Test
+    internal fun `register returns 404 on unknown keycloakId`() {
+        val unknownId = UUID.randomUUID()
+        val res = restTemplate.getForEntity("/api/users/${unknownId}/register", String::class.java)
+        assertThat(res.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+
+
     }
 
     @Test
